@@ -1,0 +1,72 @@
+#!/bin/bash
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Coding style Process 📇"
+show_loading_bar() {
+    local length=$1
+    local progress=$2
+
+    local num_hashes=$((progress * length / 100))
+
+    printf "\033[1;33m["
+    for ((i=0; i<length; i++)); do
+        if ((i < num_hashes)); then
+            printf "#"
+        else
+            printf " "
+        fi
+    done
+    printf "] %d%%\033[0m" "$progress"
+}
+for ((progress=0; progress<=100; progress+=10)); do
+    show_loading_bar 20 "$progress"
+    sleep 0.1
+    printf "\r"
+done
+echo
+
+coding-style.sh . . >/dev/null 2>&1
+
+if [ -s "coding-style-reports.log" ]; then
+    if [ -f ".normignore" ]; then
+        while IFS= read -r path; do
+            tmp_file=$(mktemp)
+            while IFS= read -r line; do
+                if [[ $line != *"$path"* ]]; then
+                    echo "$line" >> "$tmp_file"
+                fi
+            done < "coding-style-reports.log"
+            mv "$tmp_file" "coding-style-reports.log"
+        done < ".normignore"
+    fi
+    if [ -s "coding-style-reports.log" ]; then
+            echo "\n##################################################"
+            echo "\033[0;31m\n⛔️ CODING STYLE ERROR:\n"
+            cat coding-style-reports.log
+            echo "\033[0m"
+            echo "##################################################\n"
+        exit 1
+    else
+        echo "\033[0;32m\nPush Successfully realize ✅\n\033[0m"
+    fi
+else
+    echo "\033[0;32m\nPush Successfully realize ✅\n\033[0m"
+fi
+
+make re >/dev/null 2>&1
+make_result=$?
+
+make clean >/dev/null 2>&1
+make_clean_result=$?
+
+make fclean >/dev/null 2>&1
+make_fclean_result=$?
+
+if [ $make_result -ne 0 ] || [ $make_clean_result -ne 0 ] || [ $make_fclean_result -ne 0 ]; then
+    echo "\033[0;31m\n⛔️ MAKE ERROR:\n"
+    echo "There was an error during compilation or cleaning process."
+    echo "\033[0m"
+    exit 1
+else
+    echo "\033[0;32m\nMake commands executed successfully ✅\n\033[0m"
+fi
